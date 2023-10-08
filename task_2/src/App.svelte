@@ -1,47 +1,78 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
+  import { onMount } from 'svelte';
+
+  let fromCurrency = 'USD';
+  let toCurrency = 'EUR';
+  let fromAmount = 1;
+  let toAmount = 0;
+  let exchangeRate = 0;
+  let currencies: string[] = [];
+
+  async function fetchExchangeRate() {
+    const response = await fetch(`https://open.er-api.com/v6/latest/${fromCurrency}`);
+    const data = await response.json();
+    exchangeRate = data.rates[toCurrency];
+    toAmount = fromAmount * exchangeRate;
+  }
+
+  async function fetchCurrencies() {
+    const response = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await response.json();
+    currencies = Object.keys(data.rates);
+  }
+
+  onMount(() => {
+    fetchExchangeRate();
+    fetchCurrencies();
+  });
+
+  async function handleCurrencyChange() {
+    await fetchExchangeRate();
+  }
+
+  async function handleAmountToChange() {
+    return (fromAmount = +(toAmount / (await getExchangeRate(fromCurrency, toCurrency))).toFixed(
+      2,
+    ));
+  }
+  async function handleAmountFromChange() {
+    return (toAmount = +(fromAmount / (await getExchangeRate(toCurrency, fromCurrency))).toFixed(
+      2,
+    ));
+  }
+
+  async function getExchangeRate(baseCurrency: string, targetCurrency: string) {
+    const response = await fetch(`https://open.er-api.com/v6/latest/${baseCurrency}`);
+    const data = await response.json();
+    return data.rates[targetCurrency];
+  }
 </script>
 
 <main>
+  <h1>Конвертерация онлайн</h1>
+
   <div>
-    <a href="https://vitejs.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-  <h1>Vite + Svelte</h1>
-
-  <div class="card">
-    <Counter />
+    <label for="from-currency">Исходная валюта:</label>
+    <select id="from-currency" bind:value={fromCurrency} on:change={handleCurrencyChange}>
+      {#each currencies as currency}
+        <option value={currency}>{currency}</option>
+      {/each}
+    </select>
+    <input type="number" bind:value={fromAmount} on:input={handleAmountFromChange} />
   </div>
 
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
+  <div>
+    <label for="to-currency">Конечная валюта:</label>
+    <select id="to-currency" bind:value={toCurrency} on:change={handleCurrencyChange}>
+      {#each currencies as currency}
+        <option value={currency}>{currency}</option>
+      {/each}
+    </select>
+    <input type="number" bind:value={toAmount} on:input={handleAmountToChange} />
+  </div>
 
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
+  <p>Обменный курс: {exchangeRate}</p>
 </main>
 
 <style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
-  }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
-  .read-the-docs {
-    color: #888;
-  }
 </style>
